@@ -1,0 +1,228 @@
+version: '3.8'
+
+x-java-ops: &java-ops
+  JAVA_TOOL_OPTIONS: -Xss512k -XX:MaxMetaspaceSize=50m -XX:MaxRAMPercentage=70
+
+x-spring-ops: &spring-ops
+  SPRING_PROFILES_ACTIVE: gradle, dk
+  SPRING_SLEUTH_TRACE-ID128: false
+  logging.level.com.mk: DEBUG
+  SPRING_ZIPKIN_BASEURL: http://tempo:9411
+
+services:
+  eva:
+    image: com.mk/eva-exchange-rx:1.0.0
+    labels: 
+      type: spring
+    deploy:
+      resources:
+          limits:
+            cpus: '2'
+            memory: 512M
+          reservations:
+            memory: 128M
+    ports: 
+      - 9080:8080
+    environment:
+       <<: *java-ops
+       <<: *spring-ops
+  sword-rx:
+    image: com.mk/swordfish-rx:1.0.0
+    labels: 
+      type: spring
+    deploy:
+      resources:
+          limits:
+            cpus: '2'
+            memory: 512M
+          reservations:
+            memory: 128M
+    ports: 
+      - 9081:8080
+    environment:
+       <<: *spring-ops
+  sword:
+    image: com.mk/swordfish:1.0.0
+    labels: 
+      type: spring
+    deploy:
+      resources:
+          limits:
+            cpus: '4'
+            memory: 512M
+          reservations:
+            memory: 128M
+    ports: 
+      - 9082:8080
+    environment:
+       <<: *spring-ops
+  
+  # Infra
+  pg:
+    image: postgres:15.0
+    labels: 
+      type: infra
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: pa55word
+      POSTGRES_USER: user
+      POSTGRES_DB: postgres
+    
+  redis:
+    image: redis:7.0.5
+    labels: 
+      type: infra
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=pa55word
+
+  rabbit:
+    image: rabbitmq:3-management
+    labels: 
+      type: infra
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pa55word
+
+  # Performance
+  # Command docker-compose run k6 run /scripts/aliases.js
+  # https://github.com/grafana/k6-example-google-cloud-cicd
+  # https://medium.com/swlh/beautiful-load-testing-with-k6-and-docker-compose-4454edb3a2e3
+  k6:
+    image: grafana/k6:0.41.0
+    labels: 
+      type: test
+    ports:
+      - 16565:6565
+    environment:
+      K6_OUT: influxdb=http://influxdb:8086/k6
+      K6_INFLUXDB_USERNAME: user
+      K6_INFLUXDB_PASSWORD: pa55word
+      K6_INFLUXDB_TAGS_AS_FIELDS: status:string
+    volumes:
+      - ./data/k6/scripts:/scripts
+    command: run /scripts/aliases.js
+
+
+  # !Instalar metabase
+
+  # Monitoring
+  grafana:
+    image: grafana/grafana:9.2.6
+    labels: 
+      type: monitor
+    ports:
+      - 13000:3000
+    environment:
+      GF_SECURITY_ADMIN_USER: user
+      GF_SECURITY_ADMIN_PASSWORD: pa55word
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./config/grafana/provisioning/:/etc/grafana/provisioning/
+
+  influxdb:
+    image: influxdb:1.8
+    labels: 
+      type: monitor
+    ports: 
+      - 18086:8086
+    environment:
+      INFLUXD_DB: k6
+      INFLUXD_ADMIN_USER: user
+      INFLUXD_ADMIN_PASSWORD: pa55word
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb
+
+  prometheus:
+    image: prom/prometheus:latest
+    labels: 
+      type: monitor
+    ports:
+      - 19090:9090
+    volumes:
+      - ./config/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
+  
+  loki:
+    image: grafana/loki:2.7.0
+    labels: 
+      type: monitor
+    user: "0"
+    ports:
+      - "13101:3100"                                   # loki needs to be exposed so it receives logs
+    environment:      # https://github.com/grafana/loki/blob/main/vendor/github.com/uber/jaeger-client-go/README.md
+      - JAEGER_AGENT_HOST=tempo
+      - JAEGER_ENDPOINT=http://tempo:14268/api/traces # send traces to Tempo 
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    volumes:
+      - ./config/loki-minio.yaml:/etc/loki/loki-config.yaml
+      - ./data/loki:/tmp/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    depends_on:
+      - minio
+  
+  promtail:
+    image: grafana/promtail:2.7.0
+    labels: 
+      type: monitor
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock
+      - ./config/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./data/promtail:/tmp
+    command: -config.file=/etc/promtail/config.yaml
+    
+  minio:
+    image: minio/minio:latest
+    labels: 
+      type: infra
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - ./data/minio:/data
+    environment:
+      - MINIO_ACCESS_KEY=user
+      - MINIO_SECRET_KEY=pa55word
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        mkdir -p /data/tempo-data && \
+        minio server --console-address :9001 /data
+
+  tempo:
+    image: grafana/tempo:1.5.0
+    labels: 
+      type: monitor
+    ports:
+      - "14268:14268"  # jaeger ingest, Jaeger - Thrift HTTP
+    volumes:
+      - ./config/tempo-config.yaml:/etc/tempo.yaml
+      - ./data/tempo:/tmp/tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    depends_on:
+      - minio
+
+  # https://github.com/mingrammer/flog log generator
+  flog:
+    image: mingrammer/flog
+    command: -f json -d 1s -l

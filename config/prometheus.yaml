@@ -1,0 +1,29 @@
+global:
+  scrape_interval:     10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: 'eva'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['eva:8080']
+        labels:
+          application: 'eva'
+  - job_name: 'sword-rx'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['sword-rx:8080']
+        labels:
+          application: 'sword-rx'
+  - job_name: 'sword'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['sword:8080']
+        labels:
+          application: 'sword'
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: [ 'localhost:9090' ]
+  - job_name: 'tempo'
+    static_configs:
+      - targets: [ 'tempo:3200' ]

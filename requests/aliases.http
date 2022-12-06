@@ -1,0 +1,5 @@
+POST http://localhost:9082/aliases
+Content-Type: application/json
+Accept-Language: en
+
+<@ ./requests/createAlias.json

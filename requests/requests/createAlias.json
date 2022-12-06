@@ -1,0 +1,17 @@
+{
+    "personal" :{
+        "firstname":"Mike",
+        "lastname" : "Gal",
+        "dob" : "1989-10-30",
+        "identityDocument" :{
+            "value":"{{$randomInt 10000 99999}}",
+            "type":"CURP"
+        }
+    },
+    "aliases" : ["{{$randomInt 10000 99999}}"],
+    "accounts" : [
+                  { "number":"123" , "type":"bank" ,"exp":"2023-12"},
+                  { "number": "456", "type":"clabe" , "limit":{ "amount":"10","currency":"USD"}}
+                 ],
+    "channels" :[{"value":"55{{$randomInt 10000 99999}}","type":"PHONE"}]
+}

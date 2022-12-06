@@ -1,0 +1,50 @@
+# https://grafana.com/docs/loki/latest/clients/promtail/configuration/
+---
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: tenant1
+
+
+scrape_configs:
+  - job_name: spring 
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'dk_service'
+      - source_labels: ['__meta_docker_container_label_type']
+        target_label: 'type'
+    pipeline_stages:
+      - match:
+          selector: '{type="spring"}'
+          stages:
+          - regex:
+              expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{1,2}\:\d{2}\:\d{2}\.\d{3})\s+(?P<level>[A-Z]{4,5})\s\[(?P<serviceName>.*),(?P<traceId>.*),(?P<spanId>.*)\]\s(?P<pid>\d)\s---\s\[\s*(?P<thread>.*)\]\s(?P<logger>.*)\s+\:\s(?P<message>.*)$'
+          - labels:
+              timestamp:
+              level:
+              serviceName:
+              traceId:
+              spanId:
+              pid:
+              thread:
+              logger:
+              message:
+          - timestamp:
+              format: '2006-01-02 15:04:05.000'
+              source: timestamp
+      # https://grafana.com/docs/loki/latest/clients/promtail/stages/multiline/
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}\s\d{1,2}\:\d{2}\:\d{2}\.\d{3}'
+          max_wait_time: 3s
