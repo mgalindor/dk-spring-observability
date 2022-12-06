@@ -15,6 +15,7 @@ distributor:
         thrift_binary:
         thrift_compact:
     zipkin:
+    kafka:
     otlp:
       protocols:
         http:

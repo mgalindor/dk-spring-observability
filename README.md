@@ -14,3 +14,7 @@
 
 
 [Cloud Observability With Grafana And Spring Boot](https://blog.qaware.de/posts/cloud-observability-grafana-spring-boot/)31. March 2022
+
+[How to observe your Kubernetes cluster with OpenTelemetry](https://isitobservable.io/open-telemetry/how-to-observe-your-kubernetes-cluster-with-opentelemetry)
+
+![Alt text](./observability-arq.png?raw=true "Title")
