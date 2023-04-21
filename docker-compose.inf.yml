@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  pg:
+    image: postgres:15.0
+    labels:
+      type: infra
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: pa55word
+      POSTGRES_USER: user
+      POSTGRES_DB: postgres
+
+  redis:
+    image: redis:7.0.5
+    labels:
+      type: infra
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=pa55word
+
+  rabbit:
+    image: rabbitmq:3-management
+    labels:
+      type: infra
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pa55word
+
+  keycloak:
+    image: jboss/keycloak:latest
+    labels:
+      type: infra
+    environment:
+      DB_VENDOR: postgres
+      DB_ADDR: pg
+      DB_DATABASE: keycloak
+      DB_USER: user
+      DB_SCHEMA: public
+      DB_PASSWORD: pa55word
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: pa55word
+    ports:
+      - 18080:8080
+    depends_on:
+      - pg

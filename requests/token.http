@@ -1,0 +1,15 @@
+POST http://localhost:9080/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=8c174db01ae94ecd9fbff594dc83512e&client_secret=e5wXoFgjP9fhg2R1uTU5rVE4lxMJgEnW
+
+### 
+GET http://localhost:9080/actuator/health
+
+### 
+GET http://localhost:9080/actuator/health
+Authorization: Basic actuator password
+
+### 
+GET http://localhost:9080/actuator/metrics
+Authorization: Basic actuator password

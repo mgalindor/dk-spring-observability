@@ -1,5 +1,11 @@
-POST http://localhost:9082/aliases
+@oauth2_tokenEndpoint = http://localhost:9080/token
+@oauth2_clientId = 8c174db01ae94ecd9fbff594dc83512e
+@oauth2_clientSecret = e5wXoFgjP9fhg2R1uTU5rVE4lxMJgEnW
+@oauth2_useAuthorizationHeader= false
+
+POST http://localhost:9080/aliases
 Content-Type: application/json
 Accept-Language: en
+Authorization: openid
 
 <@ ./requests/createAlias.json
