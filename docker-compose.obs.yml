@@ -3,7 +3,7 @@ version: '3.8'
 services:
 
   # Performance
-  # Command docker-compose run k6 run /scripts/aliases.js
+  # Command docker-compose run --rm  k6 run /scripts/aliases.js
   # https://github.com/grafana/k6-example-google-cloud-cicd
   # https://medium.com/swlh/beautiful-load-testing-with-k6-and-docker-compose-4454edb3a2e3
   k6:
